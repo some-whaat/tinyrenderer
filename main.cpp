@@ -6,11 +6,28 @@ constexpr TGAColor red     = {  0,   0, 255, 255};
 constexpr TGAColor blue    = {255, 128,  64, 255};
 constexpr TGAColor yellow  = {  0, 200, 255, 255};
 
-void line(int ax, int ay, int bx, int by, TGAImage &framebuffer, TGAColor color = white) {
-    for (float t = 0.; t <= 1.; t += 0.02) {
-        int x_coord = ax * (1. - t) + bx * t;
-        int y_coord = ay * (1. - t) + by * t;
-        framebuffer.set(x_coord, y_coord, color);
+void line(int ax, int ay, int bx, int by, TGAImage &framebuffer, TGAColor color) {
+    bool is_incrisses_in_y_more_than_in_x = std::abs(ax-bx) < std::abs(ay-by);
+    if (is_incrisses_in_y_more_than_in_x) { // if the line is steep, we transpose the image
+        std::swap(ax, ay);
+        std::swap(bx, by);
+    }
+    if (ax>bx) { // make it left−to−right
+        std::swap(ax, bx);
+        std::swap(ay, by);
+    }
+
+    float y = ay;
+    float slope = static_cast<float>(by - ay) / static_cast<float>(bx - ax);
+    for (int x=ax; x<=bx; x++) {
+        int y_coord = std::round(y);
+        float t = (x-ax) / static_cast<float>(bx-ax);
+        if (is_incrisses_in_y_more_than_in_x) // if transposed, de−transpose
+            framebuffer.set(y_coord, x, color);
+        else
+            framebuffer.set(x, y_coord, color);
+        
+        y += slope;
     }
 }
 
