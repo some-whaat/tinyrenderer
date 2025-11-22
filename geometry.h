@@ -48,6 +48,7 @@ template<int n> std::ostream& operator<<(std::ostream& out, const vec<n>& v) {
     return out;
 }
 
+
 template<> struct vec<2> {
     double x = 0, y = 0;
     double& operator[](const int i)       { assert(i>=0 && i<2); return i ? y : x; }
@@ -71,6 +72,75 @@ template<> struct vec<4> {
 typedef vec<2> vec2;
 typedef vec<3> vec3;
 typedef vec<4> vec4;
+
+template<int n> struct ivec {
+    int data[n] = {0};
+    int& operator[](const int i)       { assert(i>=0 && i<n); return data[i]; }
+    int  operator[](const int i) const { assert(i>=0 && i<n); return data[i]; }
+};
+
+template<> struct ivec<2> {
+    int x = 0, y = 0;
+    int& operator[](const int i)       { assert(i>=0 && i<2); return i ? y : x; }
+    int  operator[](const int i) const { assert(i>=0 && i<2); return i ? y : x; }
+};
+
+template<> struct ivec<3> {
+    int x = 0, y = 0, z = 0;
+    int& operator[](const int i)       { assert(i>=0 && i<3); return i ? (1==i ? y : z) : x; }
+    int  operator[](const int i) const { assert(i>=0 && i<3); return i ? (1==i ? y : z) : x; }
+};
+
+template<> struct ivec<4> {
+    int x = 0, y = 0, z = 0, w = 0;
+    int& operator[](const int i)       { assert(i>=0 && i<4); return i<2 ? (i ? y : x) : (2==i ? z : w); }
+    int  operator[](const int i) const { assert(i>=0 && i<4); return i<2 ? (i ? y : x) : (2==i ? z : w); }
+    ivec<2> xy()  const { return {x, y};    }
+    ivec<3> xyz() const { return {x, y, z}; }
+};
+
+typedef ivec<2> ivec2;
+typedef ivec<3> ivec3;
+typedef ivec<4> ivec4;
+
+template<int n> int operator*(const ivec<n>& lhs, const ivec<n>& rhs) {
+    int ret = 0;
+    for (int i=n; i--; ret+=lhs[i]*rhs[i]);
+    return ret;
+}
+
+template<int n> ivec<n> operator+(const ivec<n>& lhs, const ivec<n>& rhs) {
+    ivec<n> ret = lhs;
+    for (int i=n; i--; ret[i]+=rhs[i]);
+    return ret;
+}
+
+template<int n> ivec<n> operator-(const ivec<n>& lhs, const ivec<n>& rhs) {
+    ivec<n> ret = lhs;
+    for (int i=n; i--; ret[i]-=rhs[i]);
+    return ret;
+}
+
+template<int n> ivec<n> operator*(const ivec<n>& lhs, const int& rhs) {
+    ivec<n> ret = lhs;
+    for (int i=n; i--; ret[i]*=rhs);
+    return ret;
+}
+
+template<int n> ivec<n> operator*(const int& lhs, const ivec<n>& rhs) {
+    return rhs * lhs;
+}
+
+template<int n> ivec<n> operator/(const ivec<n>& lhs, const int& rhs) {
+    ivec<n> ret = lhs;
+    for (int i=n; i--; ret[i]/=rhs);
+    return ret;
+}
+
+template<int n> std::ostream& operator<<(std::ostream& out, const ivec<n>& v) {
+    for (int i=0; i<n; i++) out << v[i] << " ";
+    return out;
+}
 
 template<int n> double norm(const vec<n>& v) {
     return std::sqrt(v*v);
