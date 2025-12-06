@@ -11,20 +11,26 @@ constexpr TGAColor red     = {  0,   0, 255, 255};
 constexpr TGAColor blue    = {255, 128,  64, 255};
 constexpr TGAColor yellow  = {  0, 200, 255, 255};
 
+
+// https://en.wikipedia.org/wiki/Shoelace_formula
+double signed_triangle_area(int ax, int ay, int bx, int by, int cx, int cy) {
+    return .5*((by-ay)*(bx+ax) + (cy-by)*(cx+bx) + (ay-cy)*(ax+cx));
+}
+
 void draw_line(int ax, int ay, int bx, int by, TGAImage &framebuffer, TGAColor color) {
     bool is_incrisses_in_y_more_than_in_x = std::abs(ax-bx) < std::abs(ay-by);
     if (is_incrisses_in_y_more_than_in_x) { // if the line is steep, we transpose the image
         std::swap(ax, ay);
         std::swap(bx, by);
     }
-    if (ax>bx) { // make it left−to−right
+    if (ax > bx) { // make it left−to−right
         std::swap(ax, bx);
         std::swap(ay, by);
     }
 
     float y = ay;
     float slope = static_cast<float>(by - ay) / static_cast<float>(bx - ax);
-    for (int x=ax; x<=bx; x++) {
+    for (int x = ax; x <= bx; x++) {
         int y_coord = std::round(y);
         if (is_incrisses_in_y_more_than_in_x) // if transposed, de−transpose
             framebuffer.set(y_coord, x, color);
@@ -73,6 +79,49 @@ void draw_filled_trig(ivec2 a, ivec2 b, ivec2 c, TGAImage &framebuffer, TGAColor
     }
 }
 
+void find_bound_box_points(int &x_min, int &x_max, int &y_min, int &y_max, const ivec2 &a, const ivec2 &b, const ivec2 &c) {
+    //  UGLY :(
+
+    y_max = std::max(std::max(a.y, b.y), c.y);
+    x_max = std::max(std::max(a.x, b.x), c.x);
+
+    y_min = std::min(std::min(a.y, b.y), c.y);
+    x_min = std::min(std::min(a.x, b.x), c.x);
+}
+
+// этот способ удобнее тк можно легко как в шейдере пербирать точки
+void draw_filled_trig_boundbox_ver(const ivec2 &a, const TGAColor &a_color, const ivec2 &b, const TGAColor &b_color, const ivec2 &c, const TGAColor &c_color, TGAImage &framebuffer, TGAImage &zbuffer) {
+    int x_min;
+    int x_max;
+    int y_min;
+    int y_max;
+    find_bound_box_points(x_min, x_max, y_min, y_max, a, b, c);
+
+    for (int y = y_min; y <= y_max; y++) {
+        for (int x = x_min; x <= x_max; x++) {
+
+            double all_trig_area = signed_triangle_area(a.x, a.y, b.x, b.y, c.x, c.y);
+            double a_coord = signed_triangle_area(x, y, b.x, b.y, c.x, c.y) / all_trig_area;
+            double b_coord = signed_triangle_area(a.x, a.y, x, y, c.x, c.y) / all_trig_area;
+            double c_coord = signed_triangle_area(a.x, a.y, b.x, b.y, x, y) / all_trig_area;
+            
+            if (a_coord < 0 || b_coord < 0 || c_coord < 0) {
+                continue;
+            }
+
+            TGAColor color;
+            color[0] = (a_color[0] * a_coord) + (b_color[0] * b_coord) + (c_color[0] * c_coord);
+            color[1] = (a_color[1] * a_coord) + (b_color[1] * b_coord) + (c_color[1] * c_coord);
+            color[2] = (a_color[2] * a_coord) + (b_color[2] * b_coord) + (c_color[2] * c_coord);
+            color[3] = 225;
+
+            // std::cout << a_coord << "  " << b_coord << "  " << c_coord << "  ";
+            // zbuffer.set()
+            framebuffer.set(x, y, color);
+        }
+    }  
+}
+
 ivec2 project_to_screen(vec3 pos, float screen_side) { // only squere screen
     ivec2 proj = ivec2();
 
@@ -85,12 +134,15 @@ ivec2 project_to_screen(vec3 pos, float screen_side) { // only squere screen
 }
 
 int main(int argc, char** argv) {
-    constexpr int width  = 888;
-    constexpr int height = 888;
+    constexpr int width  = 1111;
+    constexpr int height = 1111;
     TGAImage framebuffer(width, height, TGAImage::RGB);
-    vec3 camera_pos = vec3();
+    TGAImage zbuffer(width, height, TGAImage::GRAYSCALE);
+    //vec3 camera_pos = vec3();
 
-    const std::string model_path = "D:\\CG\\tinyrenderer\\obj\\boggie\\body.obj";
+    // const std::string model_path = (std::filesystem::current_path().string() + "\\" + "obj/boggie/body.obj");
+    // const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/african_head/african_head.obj";
+    const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/boggie/body.obj";
     if (!std::filesystem::exists(model_path)) {
         std::cerr << "Model file not found: " << model_path << std::endl;
         return 1;
@@ -104,13 +156,19 @@ int main(int argc, char** argv) {
         ivec2 a = project_to_screen(model.vert(i, 0).xyz(), width);
         ivec2 b = project_to_screen(model.vert(i, 1).xyz(), width);
         ivec2 c = project_to_screen(model.vert(i, 2).xyz(), width);
-        //std::cout << a << b << c << std::endl;
-        TGAColor rnd;
-        for (int c=0; c<3; c++) rnd[c] = std::rand()%255;
-        
-        draw_filled_trig(a, b, c, framebuffer, rnd);
+
+        // //std::cout << a << b << c << std::endl;
+        // TGAColor rnd;
+        // for (int c=0; c<3; c++) rnd[c] = std::rand()%255;
+
+        TGAColor a_color = {225,0,0,225};
+        TGAColor b_color = {0,225,0,225};
+        TGAColor c_color = {0,0,225,225};
+
+        draw_filled_trig_boundbox_ver(a, a_color, b, b_color, c, c_color, framebuffer, zbuffer);
     }
 
     framebuffer.write_tga_file("framebuffer.tga");
+
     return 0;
 }
