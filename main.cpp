@@ -90,7 +90,7 @@ void find_bound_box_points(int &x_min, int &x_max, int &y_min, int &y_max, const
 }
 
 // этот способ удобнее тк можно легко как в шейдере пербирать точки
-void draw_filled_trig_boundbox_ver(const ivec2 &a, const TGAColor &a_color, const ivec2 &b, const TGAColor &b_color, const ivec2 &c, const TGAColor &c_color, TGAImage &framebuffer, TGAImage &zbuffer) {
+void draw_filled_trig_boundbox_ver(const ivec2 &a, const float &az, const TGAColor &a_color, const ivec2 &b, const float &bz, const TGAColor &b_color, const ivec2 &c, const float &cz, const TGAColor &c_color, TGAImage &framebuffer, TGAImage &zbuffer) {
     int x_min;
     int x_max;
     int y_min;
@@ -104,10 +104,15 @@ void draw_filled_trig_boundbox_ver(const ivec2 &a, const TGAColor &a_color, cons
             double a_coord = signed_triangle_area(x, y, b.x, b.y, c.x, c.y) / all_trig_area;
             double b_coord = signed_triangle_area(a.x, a.y, x, y, c.x, c.y) / all_trig_area;
             double c_coord = signed_triangle_area(a.x, a.y, b.x, b.y, x, y) / all_trig_area;
-            
-            if (a_coord < 0 || b_coord < 0 || c_coord < 0) {
+
+            unsigned char depth = static_cast<unsigned char>(((az * a_coord) + (bz * b_coord) + (cz * c_coord) + 1) * 225./2);
+
+            if (a_coord < 0 || b_coord < 0 || c_coord < 0 || zbuffer.get(x, y)[0] > depth) {
                 continue;
             }
+
+
+            // std::cout << (az * a_coord) + (bz * b_coord) + (cz * c_coord) << " ";
 
             TGAColor color;
             color[0] = (a_color[0] * a_coord) + (b_color[0] * b_coord) + (c_color[0] * c_coord);
@@ -116,7 +121,7 @@ void draw_filled_trig_boundbox_ver(const ivec2 &a, const TGAColor &a_color, cons
             color[3] = 225;
 
             // std::cout << a_coord << "  " << b_coord << "  " << c_coord << "  ";
-            // zbuffer.set()
+            zbuffer.set(x, y, {depth});
             framebuffer.set(x, y, color);
         }
     }  
@@ -141,8 +146,8 @@ int main(int argc, char** argv) {
     //vec3 camera_pos = vec3();
 
     // const std::string model_path = (std::filesystem::current_path().string() + "\\" + "obj/boggie/body.obj");
-    // const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/african_head/african_head.obj";
-    const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/boggie/body.obj";
+    const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/african_head/african_head.obj";
+    // const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/boggie/body.obj";
     if (!std::filesystem::exists(model_path)) {
         std::cerr << "Model file not found: " << model_path << std::endl;
         return 1;
@@ -153,9 +158,14 @@ int main(int argc, char** argv) {
     std::cout << model.nfaces() << std::endl;
 
     for (int i = 0; i < model.nfaces(); i++) {
+        
         ivec2 a = project_to_screen(model.vert(i, 0).xyz(), width);
         ivec2 b = project_to_screen(model.vert(i, 1).xyz(), width);
         ivec2 c = project_to_screen(model.vert(i, 2).xyz(), width);
+
+        float az = model.vert(i, 0).z;
+        float bz = model.vert(i, 1).z;
+        float cz = model.vert(i, 2).z;
 
         // //std::cout << a << b << c << std::endl;
         // TGAColor rnd;
@@ -165,10 +175,11 @@ int main(int argc, char** argv) {
         TGAColor b_color = {0,225,0,225};
         TGAColor c_color = {0,0,225,225};
 
-        draw_filled_trig_boundbox_ver(a, a_color, b, b_color, c, c_color, framebuffer, zbuffer);
+        draw_filled_trig_boundbox_ver(a, az, a_color, b, bz, b_color, c, cz, c_color, framebuffer, zbuffer);
     }
 
     framebuffer.write_tga_file("framebuffer.tga");
+    zbuffer.write_tga_file("zbuffer.tga");
 
     return 0;
 }
