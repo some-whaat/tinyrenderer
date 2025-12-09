@@ -13,7 +13,7 @@ constexpr TGAColor yellow  = {  0, 200, 255, 255};
 
 typedef vec4 Triangle[3];
 
-mat<4,4> model_view_matrix /*типа вращение + affine transform, насклько понимаю*/, viewport_matrix /*сопсна проекция на экран + z*/, perspective_matrix /*изменение с помощю этого thrustom'a*/;
+// mat<4,4> perspective_matrix /*изменение с помощю этого thrustom'a*/;
 // std::vector<double> zbuffer;
 
 
@@ -30,17 +30,32 @@ TGAColor my_cool_fancy_fragment_shader(const vec3 bar) {
     return color;
 }
 
-void init_viewport_matrix(const ivec2 &screen_sides, const float &z_depth) {
+mat<4,4> make_model_view_matrix(float y_rot) { //(vec4 rot_quaternion) { /*типа вращение + affine transform, насклько понимаю*/
+    mat<4,4> rot_matrix_y = mat<4,4>{{
+        {cos(y_rot), 0, sin(y_rot), 0},
+        {0, 1, 0, 0},
+        {-sin(y_rot), 0, cos(y_rot), 0},
+        {0, 0, 0, 1}
+    }};
+
+    return rot_matrix_y;
+}
+
+mat<4,4> make_viewport_matrix(const ivec2 &screen_sides, const float &z_depth) {
     // translate x and y from [-1, 1] to [0, width] and [0, height]
     // translate z from [-1, 1] to [0, z_depth] for the z-buffer
     
-    viewport_matrix = mat<4,4>{{
+    mat<4,4> viewport_matrix = mat<4,4>{{
         {screen_sides.x / 2.0, 0, 0, screen_sides.x / 2.0},
         {0, screen_sides.y / 2.0, 0, screen_sides.y / 2.0},
         {0, 0, z_depth / 2.0, z_depth / 2.0},
         {0, 0, 0, 1}
     }};
+
+    return viewport_matrix;
 }
+
+
 
 // https://en.wikipedia.org/wiki/Shoelace_formula
 double signed_triangle_area(int ax, int ay, int bx, int by, int cx, int cy) {
@@ -109,16 +124,6 @@ void draw_filled_trig(ivec2 a, ivec2 b, ivec2 c, TGAImage &framebuffer, TGAColor
     }
 }
 
-// void find_bound_box_points(int &x_min, int &x_max, int &y_min, int &y_max, const ivec2 &a, const ivec2 &b, const ivec2 &c) {
-//     //  UGLY :(
-
-//     y_max = std::max(std::max(a.y, b.y), c.y);
-//     x_max = std::max(std::max(a.x, b.x), c.x);
-
-//     y_min = std::min(std::min(a.y, b.y), c.y);
-//     x_min = std::min(std::min(a.x, b.x), c.x);
-// }
-
 void find_bound_box_points(int &x_min, int &x_max, int &y_min, int &y_max, const Triangle &trig) {
     //  UGLY :(
 
@@ -128,42 +133,6 @@ void find_bound_box_points(int &x_min, int &x_max, int &y_min, int &y_max, const
     y_min = std::min(std::min(trig[0].y, trig[1].y), trig[2].y);
     x_min = std::min(std::min(trig[0].x, trig[1].x), trig[2].x);
 }
-
-// этот способ удобнее тк можно легко как в шейдере пербирать точки
-/*
-void draw_filled_trig_boundbox_ver(const ivec2 &a, const float &az, const TGAColor &a_color, const ivec2 &b, const float &bz, const TGAColor &b_color, const ivec2 &c, const float &cz, const TGAColor &c_color, TGAImage &framebuffer, TGAImage &zbuffer) {
-    int x_min;
-    int x_max;
-    int y_min;
-    int y_max;
-    find_bound_box_points(x_min, x_max, y_min, y_max, a, b, c);
-
-    for (int y = y_min; y <= y_max; y++) {
-        for (int x = x_min; x <= x_max; x++) {
-
-            double all_trig_area = signed_triangle_area(a.x, a.y, b.x, b.y, c.x, c.y);
-            double a_coord = signed_triangle_area(x, y, b.x, b.y, c.x, c.y) / all_trig_area;
-            double b_coord = signed_triangle_area(a.x, a.y, x, y, c.x, c.y) / all_trig_area;
-            double c_coord = signed_triangle_area(a.x, a.y, b.x, b.y, x, y) / all_trig_area;
-
-            unsigned char depth = static_cast<unsigned char>(((az * a_coord) + (bz * b_coord) + (cz * c_coord) + 1) * 225./2);
-
-            if (a_coord < 0 || b_coord < 0 || c_coord < 0 || zbuffer.get(x, y)[0] > depth) {
-                continue;
-            }
-
-
-            // std::cout << (az * a_coord) + (bz * b_coord) + (cz * c_coord) << " ";
-
-            TGAColor color = my_cool_fancy_fragment_shader(vec3{a_coord, b_coord, c_coord});
-
-            // std::cout << a_coord << "  " << b_coord << "  " << c_coord << "  ";
-            zbuffer.set(x, y, {depth});
-            framebuffer.set(x, y, color);
-        }
-    }  
-}
-*/
 
 void draw_filled_trig_boundbox(const Triangle &trig, TGAImage &framebuffer, TGAImage &zbuffer) {
 
@@ -196,16 +165,16 @@ void draw_filled_trig_boundbox(const Triangle &trig, TGAImage &framebuffer, TGAI
     }
 }
 
-ivec2 project_to_screen(vec3 pos, float screen_side) { // only squere screen
-    ivec2 proj = ivec2();
-
-    // i need to translate from [-1, 1] to [0, width]
-    proj.x = (pos.x/2. + 0.5)* screen_side; // now it's [0, 1]
-    // proj.x *= screen_side;
-    proj.y = (pos.y/2. + 0.5) * screen_side;
-
-    return proj;
-}
+// ivec2 project_to_screen(vec3 pos, float screen_side) { // only squere screen
+//     ivec2 proj = ivec2();
+//
+//     // i need to translate from [-1, 1] to [0, width]
+//     proj.x = (pos.x/2. + 0.5)* screen_side; // now it's [0, 1]
+//     // proj.x *= screen_side;
+//     proj.y = (pos.y/2. + 0.5) * screen_side;
+//
+//     return proj;
+// }
 
 int main(int argc, char** argv) {
 
@@ -213,16 +182,18 @@ int main(int argc, char** argv) {
     constexpr int height = 999;
     constexpr float z_depth = 255.0f;
 
-    init_viewport_matrix(ivec2{width, height}, z_depth);
+    mat<4,4> model_view_matrix = make_model_view_matrix(111);
+    mat<4,4> viewport_matrix = make_viewport_matrix(ivec2{width, height}, z_depth);
 
-    
+    mat<4, 4> the_one_holy_matrix = viewport_matrix * model_view_matrix;
+
     TGAImage framebuffer(width, height, TGAImage::RGB);
     TGAImage zbuffer(width, height, TGAImage::GRAYSCALE);
-    //vec3 camera_pos = vec3();
 
     // const std::string model_path = (std::filesystem::current_path().string() + "\\" + "obj/boggie/body.obj");
     const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/african_head/african_head.obj";
     // const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/boggie/body.obj";
+
     if (!std::filesystem::exists(model_path)) {
         std::cerr << "Model file not found: " << model_path << std::endl;
         return 1;
@@ -232,25 +203,14 @@ int main(int argc, char** argv) {
     
     std::cout << model.nfaces() << std::endl;
 
+
     for (int i = 0; i < model.nfaces(); i++) {
 
         Triangle trig = { model.vert(i, 0), model.vert(i, 1), model.vert(i, 2)};
         
-        trig[0] =  viewport_matrix * trig[0];
-        trig[1] =  viewport_matrix * trig[1];
-        trig[2] =  viewport_matrix * trig[2];
-
-        // float az = model.vert(i, 0).z;
-        // float bz = model.vert(i, 1).z;
-        // float cz = model.vert(i, 2).z;
-
-        // //std::cout << a << b << c << std::endl;
-        // TGAColor rnd;
-        // for (int c=0; c<3; c++) rnd[c] = std::rand()%255;
-
-        // TGAColor a_color = {225,0,0,225};
-        // TGAColor b_color = {0,225,0,225};
-        // TGAColor c_color = {0,0,225,225};
+        trig[0] =  the_one_holy_matrix * trig[0];
+        trig[1] =  the_one_holy_matrix * trig[1];
+        trig[2] =  the_one_holy_matrix * trig[2];
 
         draw_filled_trig_boundbox(trig, framebuffer, zbuffer);
     }
