@@ -13,9 +13,6 @@ constexpr TGAColor yellow  = {  0, 200, 255, 255};
 
 typedef vec4 Triangle[3];
 
-// mat<4,4> perspective_matrix /*изменение с помощю этого thrustom'a*/;
-// std::vector<double> zbuffer;
-
 
 TGAColor my_cool_fancy_fragment_shader(const vec3 bar) {
     TGAColor a_color = {225, 0, 0, 225};
@@ -55,7 +52,17 @@ mat<4,4> make_viewport_matrix(const ivec2 &screen_sides, const float &z_depth) {
     return viewport_matrix;
 }
 
+mat<4,4> make_perspective_matrix(float persp_coef) {
+    
+    mat<4,4> perspective_matrix = {{
+        {1, 0, 0 ,0},
+        {0, 1, 0, 0},
+        {0, 0, 1, 0},
+        {0, 0, -1 * persp_coef, 1}
+    }};
 
+    return perspective_matrix;
+}
 
 // https://en.wikipedia.org/wiki/Shoelace_formula
 double signed_triangle_area(int ax, int ay, int bx, int by, int cx, int cy) {
@@ -165,34 +172,25 @@ void draw_filled_trig_boundbox(const Triangle &trig, TGAImage &framebuffer, TGAI
     }
 }
 
-// ivec2 project_to_screen(vec3 pos, float screen_side) { // only squere screen
-//     ivec2 proj = ivec2();
-//
-//     // i need to translate from [-1, 1] to [0, width]
-//     proj.x = (pos.x/2. + 0.5)* screen_side; // now it's [0, 1]
-//     // proj.x *= screen_side;
-//     proj.y = (pos.y/2. + 0.5) * screen_side;
-//
-//     return proj;
-// }
-
 int main(int argc, char** argv) {
 
     constexpr int width  = 999;
     constexpr int height = 999;
     constexpr float z_depth = 255.0f;
 
-    mat<4,4> model_view_matrix = make_model_view_matrix(111);
+    mat<4,4> model_view_matrix = make_model_view_matrix(111.f);
+    mat<4,4> projection_matrix = make_perspective_matrix(0.7f);
     mat<4,4> viewport_matrix = make_viewport_matrix(ivec2{width, height}, z_depth);
 
-    mat<4, 4> the_one_holy_matrix = viewport_matrix * model_view_matrix;
+    mat<4, 4> the_one_holy_matrix = viewport_matrix * model_view_matrix * projection_matrix ;
 
     TGAImage framebuffer(width, height, TGAImage::RGB);
     TGAImage zbuffer(width, height, TGAImage::GRAYSCALE);
 
-    // const std::string model_path = (std::filesystem::current_path().string() + "\\" + "obj/boggie/body.obj");
-    const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/african_head/african_head.obj";
+    // const std::string model_path = (std::filesystem::current_path().string() + "/" + "obj/boggie/body.obj");
+    // const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/african_head/african_head.obj";
     // const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/boggie/body.obj";
+    const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/diablo3_pose/diablo3_pose.obj";
 
     if (!std::filesystem::exists(model_path)) {
         std::cerr << "Model file not found: " << model_path << std::endl;
@@ -208,9 +206,9 @@ int main(int argc, char** argv) {
 
         Triangle trig = { model.vert(i, 0), model.vert(i, 1), model.vert(i, 2)};
         
-        trig[0] =  the_one_holy_matrix * trig[0];
-        trig[1] =  the_one_holy_matrix * trig[1];
-        trig[2] =  the_one_holy_matrix * trig[2];
+        trig[0] =  (the_one_holy_matrix * trig[0]) / trig[0].w;
+        trig[1] =  (the_one_holy_matrix * trig[1]) / trig[0].w;
+        trig[2] =  (the_one_holy_matrix * trig[2]) / trig[0].w;
 
         draw_filled_trig_boundbox(trig, framebuffer, zbuffer);
     }
