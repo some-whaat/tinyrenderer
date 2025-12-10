@@ -31,16 +31,20 @@ TGAColor my_cool_fancy_lighting_fragment_shader(const vec3 bar, const vec3 norma
 
     vec3 light_dir = vec3{ -0.3, -0.4, 0.3 };
 
-    float lighting_am = light_dir * normal;
-    if (lighting_am < 0.0) lighting_am = 0.0;
+    float diff = light_dir * normal;
+    if (diff < 0.0) diff = 0.0;
 
-    unsigned char light_col = static_cast<unsigned char>(255 * lighting_am);
+    vec3 reflection = normalized(normal * (normal * light_dir) * 2 - light_dir); // normal * light_dir -> скаляр, на который должен заскейлится normal; normal * (normal * light_dir) * 2 -> скейлим её иумножаем на 2 чтоб получить правельное отражение 
+    double spec = std::pow(std::max(reflection.z, 0.), 33); // reflection.z т.к камера у нас сдвинута только по z, и по ней мы можем проверить угол к камере даже не ища настоящего угла
+
+    unsigned char light_col = static_cast<unsigned char>(255 * diff + spec * 255);
+    
 
     TGAColor color;
     color[0] = light_col;
     color[1] = light_col;
     color[2] = light_col;
-    color[3] = 225;
+    color[3] = 255;
     return color;
 }
 
@@ -205,7 +209,7 @@ int main(int argc, char** argv) {
     constexpr int height = 999;
     constexpr float z_depth = 255.0f;
 
-    mat<4,4> model_view_matrix = make_model_view_matrix(0.0f);
+    mat<4,4> model_view_matrix = make_model_view_matrix(2);
     // mat<4,4> perspective_matrix = make_perspective_matrix(5.f);
     mat<4,4> viewport_matrix = make_viewport_matrix(ivec2{width, height}, z_depth);
 
