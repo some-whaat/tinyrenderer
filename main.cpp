@@ -27,6 +27,23 @@ TGAColor my_cool_fancy_fragment_shader(const vec3 bar) {
     return color;
 }
 
+TGAColor my_cool_fancy_lighting_fragment_shader(const vec3 bar, const vec3 normal) {
+
+    vec3 light_dir = vec3{ -0.3, -0.4, 0.3 };
+
+    float lighting_am = light_dir * normal;
+    if (lighting_am < 0.0) lighting_am = 0.0;
+
+    unsigned char light_col = static_cast<unsigned char>(255 * lighting_am);
+
+    TGAColor color;
+    color[0] = light_col;
+    color[1] = light_col;
+    color[2] = light_col;
+    color[3] = 225;
+    return color;
+}
+
 mat<4,4> make_model_view_matrix(float y_rot) { //(vec4 rot_quaternion) { /*типа вращение + affine transform, насклько понимаю*/
     mat<4,4> rot_matrix_y = mat<4,4>{{
         {cos(y_rot), 0, sin(y_rot), 0},
@@ -52,17 +69,17 @@ mat<4,4> make_viewport_matrix(const ivec2 &screen_sides, const float &z_depth) {
     return viewport_matrix;
 }
 
-mat<4,4> make_perspective_matrix(float persp_coef) {
+// mat<4,4> make_perspective_matrix(float persp_coef) {
     
-    mat<4,4> perspective_matrix = {{
-        {1, 0, 0 ,0},
-        {0, 1, 0, 0},
-        {0, 0, 1, 0},
-        {0, 0, -1 * persp_coef, 1}
-    }};
+//     mat<4,4> perspective_matrix = {{
+//         {1, 0, 0 ,0},
+//         {0, 1, 0, 0},
+//         {0, 0, 1, 0},
+//         {0, 0, -1/persp_coef, 1}
+//     }};
 
-    return perspective_matrix;
-}
+//     return perspective_matrix;
+// }
 
 // https://en.wikipedia.org/wiki/Shoelace_formula
 double signed_triangle_area(int ax, int ay, int bx, int by, int cx, int cy) {
@@ -141,6 +158,15 @@ void find_bound_box_points(int &x_min, int &x_max, int &y_min, int &y_max, const
     x_min = std::min(std::min(trig[0].x, trig[1].x), trig[2].x);
 }
 
+vec3 find_trig_norm(const Triangle &trig) {
+    // AAAAAAUUUUH UGLYYYYYYYYYY
+
+    vec4 a = trig[0], b = trig[1], c = trig[2];
+    vec3 v1{b.x - a.x, b.y - a.y, b.z - a.z};
+    vec3 v2{c.x - a.x, c.y - a.y, c.z - a.z};
+    return normalized(cross(v1, v2));
+}
+
 void draw_filled_trig_boundbox(const Triangle &trig, TGAImage &framebuffer, TGAImage &zbuffer) {
 
     int x_min;
@@ -164,7 +190,8 @@ void draw_filled_trig_boundbox(const Triangle &trig, TGAImage &framebuffer, TGAI
                 continue;
             }
 
-            TGAColor color = my_cool_fancy_fragment_shader(vec3{a_coord, b_coord, c_coord});
+            // TGAColor color = my_cool_fancy_fragment_shader(vec3{a_coord, b_coord, c_coord});
+            TGAColor color = my_cool_fancy_lighting_fragment_shader(vec3{a_coord, b_coord, c_coord}, find_trig_norm(trig));
 
             zbuffer.set(x, y, {depth});
             framebuffer.set(x, y, color);
@@ -178,11 +205,11 @@ int main(int argc, char** argv) {
     constexpr int height = 999;
     constexpr float z_depth = 255.0f;
 
-    mat<4,4> model_view_matrix = make_model_view_matrix(111.f);
-    mat<4,4> projection_matrix = make_perspective_matrix(0.7f);
+    mat<4,4> model_view_matrix = make_model_view_matrix(0.0f);
+    // mat<4,4> perspective_matrix = make_perspective_matrix(5.f);
     mat<4,4> viewport_matrix = make_viewport_matrix(ivec2{width, height}, z_depth);
 
-    mat<4, 4> the_one_holy_matrix = viewport_matrix * model_view_matrix * projection_matrix ;
+    mat<4, 4> the_one_holy_matrix = viewport_matrix * model_view_matrix; // * projection_matrix ;
 
     TGAImage framebuffer(width, height, TGAImage::RGB);
     TGAImage zbuffer(width, height, TGAImage::GRAYSCALE);
@@ -207,8 +234,8 @@ int main(int argc, char** argv) {
         Triangle trig = { model.vert(i, 0), model.vert(i, 1), model.vert(i, 2)};
         
         trig[0] =  (the_one_holy_matrix * trig[0]) / trig[0].w;
-        trig[1] =  (the_one_holy_matrix * trig[1]) / trig[0].w;
-        trig[2] =  (the_one_holy_matrix * trig[2]) / trig[0].w;
+        trig[1] =  (the_one_holy_matrix * trig[1]) / trig[1].w;;
+        trig[2] =  (the_one_holy_matrix * trig[2]) / trig[2].w;;
 
         draw_filled_trig_boundbox(trig, framebuffer, zbuffer);
     }
