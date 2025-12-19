@@ -10,8 +10,9 @@ class Model {
     std::vector<int> facet_tex = {}; //  ┘ nfaces()*3
     TGAImage diffusemap  = {};       // diffuse color texture
     TGAImage normalmap   = {};       // normal map texture
-    TGAImage specularmap = {};       // specular texture
+    // TGAImage specularmap = {};       // specular texture
 public:
+    TGAImage specularmap = {};
     Model(const std::string filename);
     int nverts() const; // number of vertices
     int nfaces() const; // number of triangles
