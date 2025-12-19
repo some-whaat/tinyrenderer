@@ -5,11 +5,8 @@
 #include "tgaimage.h"
 #include <filesystem>
 
-constexpr TGAColor white   = {255, 255, 255, 255}; // attention, BGRA order
-constexpr TGAColor green   = {  0, 255,   0, 255};
-constexpr TGAColor red     = {  0,   0, 255, 255};
-constexpr TGAColor blue    = {255, 128,  64, 255};
-constexpr TGAColor yellow  = {  0, 200, 255, 255};
+const vec3 LIGHT_DIR = vec3{ -0.3, -0.4, 0.3 };
+const float ROT_X = 0.1f; // in radians
 
 typedef vec4 Triangle[3];
 
@@ -27,17 +24,28 @@ TGAColor my_cool_fancy_fragment_shader(const vec3 bar) {
     return color;
 }
 
-TGAColor my_cool_fancy_lighting_fragment_shader(const vec3 bar, const vec3 normal) {
+TGAColor my_cool_fancy_circ_fragment_shader(const ivec2 coord) {
+    
+    ivec2 dist_vec = coord - ivec2{555, 555};
+    float dist = sqrt(dist_vec.x*dist_vec.x + dist_vec.y*dist_vec.y);
 
-    vec3 light_dir = vec3{ -0.3, -0.4, 0.3 };
+    TGAColor color = {111, 111, 0, 225};
+    if (dist < 111) {
+        color = {0, 111, 225, 225};
+    }
 
-    float diff = light_dir * normal;
+    return color;
+}
+
+TGAColor my_cool_fancy_lighting_fragment_shader_old_scool(const vec3 bar, const vec3 normal) {
+
+    float diff = LIGHT_DIR * normal;
     if (diff < 0.0) diff = 0.0;
 
-    vec3 reflection = normalized(normal * (normal * light_dir) * 2 - light_dir); // normal * light_dir -> скаляр, на который должен заскейлится normal; normal * (normal * light_dir) * 2 -> скейлим её иумножаем на 2 чтоб получить правельное отражение 
+    vec3 reflection = normalized(normal * (normal * LIGHT_DIR) * 2 - LIGHT_DIR); // normal * LIGHT_DIR -> скаляр, на который должен заскейлится normal; normal * (normal * LIGHT_DIR) * 2 -> скейлим её иумножаем на 2 чтоб получить правельное отражение 
     double spec = std::pow(std::max(reflection.z, 0.), 33); // reflection.z т.к камера у нас сдвинута только по z, и по ней мы можем проверить угол к камере даже не ища настоящего угла
 
-    unsigned char light_col = static_cast<unsigned char>(255 * diff + spec * 255);
+    unsigned char light_col = static_cast<unsigned char>(255 * diff + spec);
     
 
     TGAColor color;
@@ -48,7 +56,28 @@ TGAColor my_cool_fancy_lighting_fragment_shader(const vec3 bar, const vec3 norma
     return color;
 }
 
-mat<4,4> make_model_view_matrix(float y_rot) { //(vec4 rot_quaternion) { /*типа вращение + affine transform, насклько понимаю*/
+TGAColor my_cool_fancy_lighting_fragment_shader(const vec3 bar, const vec4 norms[3]) {
+
+    vec3 normal = vec4{norms[0] * bar.x + norms[1] * bar.y + norms[2] * bar.z}.xyz();
+
+    float diff = LIGHT_DIR * normal;
+    if (diff < 0.0) diff = 0.0;
+
+    vec3 reflection = normalized(normal * (normal * LIGHT_DIR) * 2 - LIGHT_DIR); // normal * LIGHT_DIR -> скаляр, на который должен заскейлится normal; normal * (normal * LIGHT_DIR) * 2 -> скейлим её иумножаем на 2 чтоб получить правельное отражение 
+    double spec = std::pow(std::max(reflection.z, 0.), 33); // reflection.z т.к камера у нас сдвинута только по z, и по ней мы можем проверить угол к камере даже не ища настоящего угла
+
+    unsigned char light_col = static_cast<unsigned char>(255 * diff + spec);
+    
+
+    TGAColor color;
+    color[0] = light_col;
+    color[1] = light_col;
+    color[2] = light_col;
+    color[3] = 255;
+    return color;
+}
+
+mat<4,4> make_model_view_matrix(float y_rot) { //(vec4 rot_quaternion) { /*типа вращение + affine transform\*/
     mat<4,4> rot_matrix_y = mat<4,4>{{
         {cos(y_rot), 0, sin(y_rot), 0},
         {0, 1, 0, 0},
@@ -116,9 +145,9 @@ void draw_line(int ax, int ay, int bx, int by, TGAImage &framebuffer, TGAColor c
 
 
 void draw_trig(ivec2 a, ivec2 b, ivec2 c, TGAImage &framebuffer) {
-    draw_line(a.x, a.y, b.x, b.y, framebuffer, white);
-    draw_line(b.x, b.y, c.x, c.y, framebuffer, white);
-    draw_line(c.x, c.y, a.x, a.y, framebuffer, white);
+    draw_line(a.x, a.y, b.x, b.y, framebuffer, {225, 255, 255, 225});
+    draw_line(b.x, b.y, c.x, c.y, framebuffer, {225, 255, 255, 225});
+    draw_line(c.x, c.y, a.x, a.y, framebuffer, {225, 255, 255, 225});
 }
 
 void draw_filled_trig(ivec2 a, ivec2 b, ivec2 c, TGAImage &framebuffer, TGAColor color) {
@@ -171,7 +200,7 @@ vec3 find_trig_norm(const Triangle &trig) {
     return normalized(cross(v1, v2));
 }
 
-void draw_filled_trig_boundbox(const Triangle &trig, TGAImage &framebuffer, TGAImage &zbuffer) {
+void draw_filled_trig_boundbox(const Triangle &trig, const vec4 norms[3], TGAImage &framebuffer, TGAImage &zbuffer) {
 
     int x_min;
     int x_max;
@@ -183,6 +212,7 @@ void draw_filled_trig_boundbox(const Triangle &trig, TGAImage &framebuffer, TGAI
     for (int y = y_min; y <= y_max; y++) {
         for (int x = x_min; x <= x_max; x++) {
 
+            // barcentrики
             double all_trig_area = signed_triangle_area(trig[0].x, trig[0].y, trig[1].x, trig[1].y, trig[2].x, trig[2].y);
             double a_coord = signed_triangle_area(x, y, trig[1].x, trig[1].y, trig[2].x, trig[2].y) / all_trig_area;
             double b_coord = signed_triangle_area(trig[0].x, trig[0].y, x, y, trig[2].x, trig[2].y) / all_trig_area;
@@ -195,7 +225,9 @@ void draw_filled_trig_boundbox(const Triangle &trig, TGAImage &framebuffer, TGAI
             }
 
             // TGAColor color = my_cool_fancy_fragment_shader(vec3{a_coord, b_coord, c_coord});
-            TGAColor color = my_cool_fancy_lighting_fragment_shader(vec3{a_coord, b_coord, c_coord}, find_trig_norm(trig));
+            // TGAColor color = my_cool_fancy_lighting_fragment_shader_old_scool(vec3{a_coord, b_coord, c_coord}, find_trig_norm(trig));
+            TGAColor color = my_cool_fancy_lighting_fragment_shader(vec3{a_coord, b_coord, c_coord}, norms);
+            // TGAColor color = my_cool_fancy_circ_fragment_shader(ivec2{x, y});
 
             zbuffer.set(x, y, {depth});
             framebuffer.set(x, y, color);
@@ -209,7 +241,7 @@ int main(int argc, char** argv) {
     constexpr int height = 999;
     constexpr float z_depth = 255.0f;
 
-    mat<4,4> model_view_matrix = make_model_view_matrix(2);
+    mat<4,4> model_view_matrix = make_model_view_matrix(ROT_X);
     // mat<4,4> perspective_matrix = make_perspective_matrix(5.f);
     mat<4,4> viewport_matrix = make_viewport_matrix(ivec2{width, height}, z_depth);
 
@@ -219,9 +251,9 @@ int main(int argc, char** argv) {
     TGAImage zbuffer(width, height, TGAImage::GRAYSCALE);
 
     // const std::string model_path = (std::filesystem::current_path().string() + "/" + "obj/boggie/body.obj");
-    // const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/african_head/african_head.obj";
+    const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/african_head/african_head.obj";
     // const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/boggie/body.obj";
-    const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/diablo3_pose/diablo3_pose.obj";
+    // const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/diablo3_pose/diablo3_pose.obj";
 
     if (!std::filesystem::exists(model_path)) {
         std::cerr << "Model file not found: " << model_path << std::endl;
@@ -236,12 +268,18 @@ int main(int argc, char** argv) {
     for (int i = 0; i < model.nfaces(); i++) {
 
         Triangle trig = { model.vert(i, 0), model.vert(i, 1), model.vert(i, 2)};
-        
-        trig[0] =  (the_one_holy_matrix * trig[0]) / trig[0].w;
-        trig[1] =  (the_one_holy_matrix * trig[1]) / trig[1].w;;
-        trig[2] =  (the_one_holy_matrix * trig[2]) / trig[2].w;;
+        vec4 norms[3] = { model.normal(i, 0), model.normal(i, 1), model.normal(i, 2) };
 
-        draw_filled_trig_boundbox(trig, framebuffer, zbuffer);
+        std::cout << norms[0] << " | " << norms[1] << " | " << norms[2] << std::endl;
+        
+        for (int vert = 0; vert < 3; vert ++) { // transfoOoOorming
+            trig[vert] = (the_one_holy_matrix * trig[vert]) / trig[vert].w;
+            norms[vert] = (model_view_matrix * norms[vert]);
+        }
+
+        std::cout << norms[0] << " | " << norms[1] << " | " << norms[2] << std::endl;
+
+        draw_filled_trig_boundbox(trig, norms, framebuffer, zbuffer);
     }
 
     framebuffer.write_tga_file("framebuffer.tga");
