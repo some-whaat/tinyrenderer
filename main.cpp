@@ -5,7 +5,7 @@
 #include "tgaimage.h"
 #include <filesystem>
 
-const vec3 LIGHT_DIR = vec3{ -0.3, -0.4, 0.3 };
+const vec3 LIGHT_DIR = vec3{ -0.3, -0.4, 0.3 };//vec3{ 0.3, 0.1, 0.6 };
 const float ROT_X = 0.1f; // in radians
 
 typedef vec4 Triangle[3];
@@ -63,10 +63,11 @@ TGAColor my_cool_fancy_lighting_fragment_shader(const vec3 bar, const vec4 norms
     float diff = LIGHT_DIR * normal;
     if (diff < 0.0) diff = 0.0;
 
+    float ambient = 50.;
     vec3 reflection = normalized(normal * (normal * LIGHT_DIR) * 2 - LIGHT_DIR); // normal * LIGHT_DIR -> скаляр, на который должен заскейлится normal; normal * (normal * LIGHT_DIR) * 2 -> скейлим её иумножаем на 2 чтоб получить правельное отражение 
     double spec = std::pow(std::max(reflection.z, 0.), 33); // reflection.z т.к камера у нас сдвинута только по z, и по ней мы можем проверить угол к камере даже не ища настоящего угла
 
-    unsigned char light_col = static_cast<unsigned char>(255 * diff + spec);
+    unsigned char light_col = static_cast<unsigned char>(255 * diff + spec * 22 + ambient);
     
 
     TGAColor color;
@@ -268,12 +269,13 @@ int main(int argc, char** argv) {
     for (int i = 0; i < model.nfaces(); i++) {
 
         Triangle trig = { model.vert(i, 0), model.vert(i, 1), model.vert(i, 2)};
-        vec4 norms[3] = { model.normal(i, 0), model.normal(i, 1), model.normal(i, 2) };
+        vec4 norms[3] = { model.normal(i, 0), model.normal(i, 1), model.normal(i, 2) }; // я вообще-то таскаю эту ненужную w, ну пофигZ
 
         std::cout << norms[0] << " | " << norms[1] << " | " << norms[2] << std::endl;
         
         for (int vert = 0; vert < 3; vert ++) { // transfoOoOorming
             trig[vert] = (the_one_holy_matrix * trig[vert]) / trig[vert].w;
+            // norms[vert] = (model_view_matrix.invert_transpose() * norms[vert]);
             norms[vert] = (model_view_matrix * norms[vert]);
         }
 
