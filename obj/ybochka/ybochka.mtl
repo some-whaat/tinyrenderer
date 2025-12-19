@@ -1,0 +1,102 @@
+# Blender 5.0.0 MTL File: 'backup.blend'
+# www.blender.org
+
+newmtl model_0.001
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd /run/media/somewhat/shared_space (obsidian, etc)/blender/ыбы/ыба3/model_0_color.png
+
+newmtl model_1.001
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd /run/media/somewhat/shared_space (obsidian, etc)/blender/ыбы/ыба3/model_1_color.png
+
+newmtl model_10.001
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd /run/media/somewhat/shared_space (obsidian, etc)/blender/ыбы/ыба3/model_10_color.png
+
+newmtl model_2.001
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd /run/media/somewhat/shared_space (obsidian, etc)/blender/ыбы/ыба3/model_2_color.png
+
+newmtl model_3.001
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd /run/media/somewhat/shared_space (obsidian, etc)/blender/ыбы/ыба3/model_3_color.png
+
+newmtl model_4.001
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd /run/media/somewhat/shared_space (obsidian, etc)/blender/ыбы/ыба3/model_4_color.png
+
+newmtl model_5.001
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd /run/media/somewhat/shared_space (obsidian, etc)/blender/ыбы/ыба3/model_5_color.png
+
+newmtl model_6.001
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd /run/media/somewhat/shared_space (obsidian, etc)/blender/ыбы/ыба3/model_6_color.png
+
+newmtl model_8.001
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd /run/media/somewhat/shared_space (obsidian, etc)/blender/ыбы/ыба3/model_8_color.png
+
+newmtl model_9.001
+Ns 0.000000
+Ka 1.000000 1.000000 1.000000
+Ks 0.000000 0.000000 0.000000
+Ke 0.000000 0.000000 0.000000
+Ni 1.500000
+d 1.000000
+illum 1
+map_Kd /run/media/somewhat/shared_space (obsidian, etc)/blender/ыбы/ыба3/model_9_color.png

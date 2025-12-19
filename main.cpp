@@ -5,8 +5,10 @@
 #include "tgaimage.h"
 #include <filesystem>
 
+// TGAImage gradient;
+
 const vec3 LIGHT_DIR = vec3{ -0.2, -0.4, 0.4 };
-const float ROT_X = 0.4f; // in radians
+const float ROT_X = -1.f; // in radians
 
 constexpr int WHITH  = 999;
 constexpr int HEIGHT = 999;
@@ -62,6 +64,26 @@ TGAColor my_cool_fancy_lighting_fragment_shader_old_scool(const vec3 bar, const 
     return color;
 }
 
+// TGAColor my_super_fancy_fragment_shader(const vec3 &bar, const vec3 &normal) {
+//
+//     float diff = LIGHT_DIR * normal;
+//     if (diff < 0.0) diff = 0.0;
+//
+//     vec3 reflection = normalized(normal * (normal * LIGHT_DIR) * 2 - LIGHT_DIR); // normal * LIGHT_DIR -> скаляр, на который должен заскейлится normal; normal * (normal * LIGHT_DIR) * 2 -> скейлим её иумножаем на 2 чтоб получить правельное отражение 
+//     double spec = std::pow(std::max(reflection.z, 0.), 33); // reflection.z т.к камера у нас сдвинута только по z, и по ней мы можем проверить угол к камере даже не ища настоящего угла
+//
+//     float light_col = (diff + spec);
+//
+//     std::cout << light_col << std::endl;
+//
+//     TGAColor color;
+//     color = gradient.get(std::min<int>(light_col * gradient.width(), gradient.width() - 2), gradient.height()/2);
+//
+//     color[3] = 255;
+//
+//     return color;
+// }
+
 TGAColor my_cool_fancy_lighting_fragment_shader(const vec3 bar, const vec2 uvs[3], const Model &model) {
 
     vec2 uv = vec2{uvs[0] * bar.x + uvs[1] * bar.y + uvs[2] * bar.z};
@@ -89,7 +111,7 @@ TGAColor my_cool_fancy_lighting_fragment_shader(const vec3 bar, const vec2 uvs[3
     return color;
 }
 
-mat<4,4> make_model_view_matrix(float y_rot) { //(vec4 rot_quaternion) { /*типа вращение + affine transform\*/
+mat<4,4> make_model_view_matrix(float y_rot) { //(vec4 rot_quaternion) { /*типа вращение + affine transform*/
     mat<4,4> rot_matrix_y = mat<4,4>{{
         {cos(y_rot), 0, sin(y_rot), 0},
         {0, 1, 0, 0},
@@ -110,6 +132,14 @@ mat<4,4> make_viewport_matrix() {
         {0, 0, Z_DEPTH / 2.0, Z_DEPTH / 2.0},
         {0, 0, 0, 1}
     }};
+
+    // для Ыбы
+    // mat<4,4> viewport_matrix = mat<4,4>{{
+    //     {WHITH / 5.0, 0, 0, WHITH / 2.0},
+    //     {0, HEIGHT / 5.0, 0, HEIGHT / 6.0},
+    //     {0, 0, Z_DEPTH / 5.0, Z_DEPTH / 2.0},
+    //     {0, 0, 0, 1}
+    // }};
 
     return viewport_matrix;
 }
@@ -238,6 +268,7 @@ void draw_filled_trig_boundbox(const Triangle &trig, const vec2 uvs[3], TGAImage
             // TGAColor color = my_cool_fancy_fragment_shader(vec3{a_coord, b_coord, c_coord});
             // TGAColor color = my_cool_fancy_lighting_fragment_shader_old_scool(vec3{a_coord, b_coord, c_coord}, find_trig_norm(trig));
             TGAColor color = my_cool_fancy_lighting_fragment_shader(vec3{a_coord, b_coord, c_coord}, uvs, model);
+            // TGAColor color = my_super_fancy_fragment_shader(vec3{a_coord, b_coord, c_coord}, find_trig_norm(trig));
             // TGAColor color = my_cool_fancy_circ_fragment_shader(ivec2{x, y});
 
             zbuffer.set(x, y, {depth});
@@ -248,19 +279,22 @@ void draw_filled_trig_boundbox(const Triangle &trig, const vec2 uvs[3], TGAImage
 
 int main(int argc, char** argv) {
 
+    // gradient.read_tga_file("/home/somewhat/projects/grathics_stuff/tinyrenderer/build/gradient.tga");
+
     model_view_matrix = make_model_view_matrix(ROT_X);
     // mat<4,4> perspective_matrix = make_perspective_matrix(5.f);
     viewport_matrix = make_viewport_matrix();
 
     mat<4, 4> the_one_holy_matrix = viewport_matrix * model_view_matrix; // * projection_matrix ;
 
-    TGAImage framebuffer(WHITH, HEIGHT, TGAImage::RGB);
+    TGAImage framebuffer(WHITH, HEIGHT, TGAImage::RGB, {186, 115, 102});
     TGAImage zbuffer(WHITH, HEIGHT, TGAImage::GRAYSCALE);
 
     // const std::string model_path = (std::filesystem::current_path().string() + "/" + "obj/boggie/body.obj");
     const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/african_head/african_head.obj";
     // const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/boggie/body.obj";
     // const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/diablo3_pose/diablo3_pose.obj";
+    // const std::string model_path = "/home/somewhat/projects/grathics_stuff/tinyrenderer/obj/ybochka/ybochka.obj";
 
     if (!std::filesystem::exists(model_path)) {
         std::cerr << "Model file not found: " << model_path << std::endl;
